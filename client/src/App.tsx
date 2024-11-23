@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { JoinForm } from './components/JoinForm';
+import { joinWaitlist } from './services/api';
 
 import './index.css';
 
@@ -33,11 +34,17 @@ const Title = styled.h1`
 `;
 
 function App() {
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const handleJoin = async (name: string, size: number) => {
-    try {
-      console.log(`name is ${name} and size is ${size}`);
-    } catch (error) {
-      console.error('Failed to join waitlist:', error);
+    try {      
+      const response = await joinWaitlist(name, size);
+      localStorage.setItem('sessionId', response.sessionId);
+      
+      setMessage(response.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to join waitlist');
     }
   };
 

@@ -21,4 +21,11 @@ export default {
     Secret: (process.env.JWT_SECRET ??  ''),
     Exp: (process.env.COOKIE_EXP ?? ''), // exp at the same time as the cookie
   },
+  Mongo: {
+    Uri: (process.env.MONGODB_URI ?? 'mongodb://localhost:27017/restaurant'),
+    Options: {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    },
+  },
 } as const;
