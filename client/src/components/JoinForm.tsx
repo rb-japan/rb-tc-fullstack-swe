@@ -43,9 +43,10 @@ const Button = styled.button`
 
 interface Props {
   onSubmit: (name: string, size: number) => Promise<void>;
+  sessionId: string | null;
 }
 
-export const JoinForm: React.FC<Props> = ({ onSubmit }) => {
+export const JoinForm: React.FC<Props> = ({ onSubmit, sessionId }) => {
   const [name, setName] = useState('');
   const [size, setSize] = useState('');
 
@@ -74,7 +75,7 @@ export const JoinForm: React.FC<Props> = ({ onSubmit }) => {
         max={10}
         required
       />
-      <Button type="submit">Join Waitlist</Button>
+      <Button disabled={!!sessionId} type="submit">Join Waitlist</Button>
     </Form>
   );
 };

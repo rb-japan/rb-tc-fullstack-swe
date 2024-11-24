@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { JoinForm } from './components/JoinForm';
-import { joinWaitlist } from './services/api';
+import { PartyStatus } from './components/PartyStatus';
+import { usePartyStatus } from './hooks/usePartyStatus';
+import { joinWaitlist, checkIn } from './services/api';
+import { Party } from './types/types';
 
 import './index.css';
 
@@ -34,25 +37,46 @@ const Title = styled.h1`
 `;
 
 function App() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(
+    localStorage.getItem('sessionId')
+  );
+  const [initialParty, setInitialParty] = useState<Party | null>(null);  
+  const party = usePartyStatus(sessionId, initialParty);
 
   const handleJoin = async (name: string, size: number) => {
     try {      
       const response = await joinWaitlist(name, size);
       localStorage.setItem('sessionId', response.sessionId);
-      
-      setMessage(response.message);
+      setSessionId(response.sessionId);
+      setInitialParty(response.party);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join waitlist');
     }
+  };
+
+  const handleCheckIn = async () => {
+    if (!sessionId) return;
+    try {
+      await checkIn(sessionId);
+    } catch (error) {
+      console.error('Failed to check in:', error);
+    }
+  };
+
+  const handleComplete = () => {
+    setSessionId(null);
   };
 
   return (
     <Container>
       <MainContent>
         <Title>Restaurant Waitlist</Title>
-        <JoinForm onSubmit={handleJoin} />
+        {party ? (
+        <PartyStatus party={party} onCheckIn={handleCheckIn} onComplete={handleComplete} />
+      ) : (
+        <JoinForm onSubmit={handleJoin} sessionId={sessionId} />
+      )}
       </MainContent>
     </Container>
   );

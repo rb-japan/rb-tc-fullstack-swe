@@ -4,14 +4,30 @@ import { Request, Response, RequestHandler } from 'express';
 import { RouteError } from '@src/common/classes';
 import HttpStatusCodes from '@src/common/HttpStatusCodes';
 import Party from '@src/models/Party';
+import { IParty } from '@src/models/Party';
 import { RestaurantConstants } from '@src/constants';
 import logger from 'jet-logger';
+import { io } from '@src/server';
 
 export class PartyController {
   private getAvailableSeats = async (): Promise<number> => {
-    const partiesInService = await Party.find({ status: 'in_service' });
-    const occupiedSeats = partiesInService.reduce((total, party) => total + party.size, 0);
-    return RestaurantConstants.MAX_PARTY_SIZE - occupiedSeats;
+    const activeParties = await Party.find({ 
+      status: { $in: ['in_service', 'ready'] }, 
+    });
+        
+    const occupiedSeats = activeParties.reduce((total, party) => total + party.size, 0);
+
+    logger.info(`Active parties: ${JSON.stringify(activeParties.map(p => ({
+      id: p.sessionId,
+      size: p.size,
+      status: p.status,
+    })))}`);
+    logger.info(`Total occupied seats: ${occupiedSeats}`);
+        
+    const availableSeats = RestaurantConstants.MAX_PARTY_SIZE - occupiedSeats;
+    logger.info(`Available seats: ${availableSeats}`);
+        
+    return availableSeats;
   };
 
   private processQueue = async (): Promise<void> => {
@@ -23,9 +39,28 @@ export class PartyController {
       if (party.size <= availableSeats) {
         party.status = 'ready';
         await party.save();
+
+        io.to(party.sessionId).emit('statusUpdate', { party });
         logger.info(`Party ${party.sessionId} moved from waiting to ready`);
         break;
       }
+    }
+  };
+
+  private processService = (party: IParty): void => {
+    try {
+      const serviceTimeMs = party.size * RestaurantConstants.SERVICE_TIME_PER_PERSON;
+
+      setTimeout(async () => {
+        party.status = 'completed';
+        await party.save();
+
+        io.to(party.sessionId).emit('statusUpdate', { party });
+        logger.info(`Service completed for party ${party.sessionId}`);
+        await this.processQueue();
+      }, serviceTimeMs);
+    } catch (error) {
+      logger.err(`Error processing service: ${error}`);
     }
   };
 
@@ -66,10 +101,6 @@ export class PartyController {
 
       await party.save();
 
-      if (initialStatus === 'waiting') {
-        await this.processQueue();
-      }
-
       logger.info(`New party joined - status: ${initialStatus}, sessionId: ${sessionId}, size: ${size}, availableSeats: ${availableSeats}, waitingPartiesCount: ${waitingParties.length}`);
 
       res.status(HttpStatusCodes.CREATED).json({
@@ -84,6 +115,66 @@ export class PartyController {
       throw new RouteError(
         HttpStatusCodes.INTERNAL_SERVER_ERROR,
         `Failed to process request, ${error}`,
+      );
+    }
+  };
+
+  public checkIn: RequestHandler = async (req, res) => {
+    const { sessionId } = req.body as { sessionId: string };
+
+    try {
+      const party = await Party.findOne({ sessionId, status: 'ready' });
+
+      if (!party) {
+        throw new RouteError(
+          HttpStatusCodes.NOT_FOUND,
+          'Party not found or not ready for check-in',
+        );
+      }
+
+      party.status = 'in_service';
+      party.serviceStartTime = new Date();
+      party.serviceEndTime = new Date(Date.now() + (party.size * RestaurantConstants.SERVICE_TIME_PER_PERSON));
+      await party.save();
+
+      io.to(sessionId).emit('statusUpdate', { party });
+      this.processService(party);
+
+      logger.info(`Party ${sessionId} checked in and started service`);
+
+      res.json({
+        party,
+        message: `Service started. Estimated time: ${party.size * 3} seconds`,
+      });
+
+    } catch (error) {
+      if (error instanceof RouteError) throw error;
+      throw new RouteError(
+        HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        'Failed to process check-in',
+      );
+    }
+  };
+
+  public getStatus: RequestHandler = async (req, res) => {
+    const { sessionId } = req.params as { sessionId: string };
+  
+    try {
+      const party = await Party.findOne({ sessionId });
+  
+      if (!party) {
+        throw new RouteError(
+          HttpStatusCodes.NOT_FOUND,
+          'Party not found',
+        );
+      }
+  
+      res.json({ party });
+    } catch (error) {
+      if (error instanceof RouteError) throw error;
+      throw new RouteError(
+        HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        'Failed to get party status',
       );
     }
   };

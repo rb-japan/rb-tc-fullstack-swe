@@ -6,6 +6,8 @@ export interface IParty extends Document {
   status: 'waiting' | 'ready' | 'in_service' | 'completed';
   sessionId: string;
   createdAt: Date;
+  serviceStartTime: Date;
+  serviceEndTime: Date;
 }
 
 const partySchema = new Schema<IParty>({
@@ -14,10 +16,12 @@ const partySchema = new Schema<IParty>({
   status: { 
     type: String, 
     enum: ['waiting', 'ready', 'in_service', 'completed'],
-    default: 'waiting'
+    default: 'waiting',
   },
   sessionId: { type: String, required: true, unique: true },
   createdAt: { type: Date, default: Date.now },
+  serviceStartTime: { type: Date },
+  serviceEndTime: { type: Date },
 });
 
 export default mongoose.model<IParty>('Party', partySchema);

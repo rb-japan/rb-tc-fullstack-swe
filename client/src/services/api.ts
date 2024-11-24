@@ -1,13 +1,9 @@
+import { Party } from '../types/types';
+
 const API_BASE_URL = 'http://localhost:5000/api/waitlist';
 
 export interface JoinResponse {
-  party: {
-    name: string;
-    size: number;
-    status: 'waiting' | 'ready' | 'in_service' | 'completed';
-    sessionId: string;
-    createdAt: Date;
-  };
+  party: Party;
   sessionId: string;
   message: string;
 }
@@ -28,3 +24,11 @@ export const joinWaitlist = async (name: string, size: number): Promise<JoinResp
 
   return response.json();
 };
+
+export const checkIn = async (sessionId: string): Promise<void> => {
+  await fetch(`${API_BASE_URL}/checkin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+}

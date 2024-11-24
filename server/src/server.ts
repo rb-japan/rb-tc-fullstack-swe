@@ -5,6 +5,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import logger from 'jet-logger';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import { Server } from 'socket.io';
+import { createServer } from 'http';
 
 import 'express-async-errors';
 
@@ -18,10 +20,24 @@ import { NodeEnvs } from '@src/common/misc';
 
 const app = express();
 
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: EnvVars.NodeEnv === 'development' ? 
+      ['http://localhost:3000'] : false,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(EnvVars.CookieProps.Secret));
-app.use(cors());
+app.use(cors({
+  origin: EnvVars.NodeEnv === 'development' ? 
+    'http://localhost:3000' : false,
+  credentials: true,
+}));
 
 if (EnvVars.NodeEnv === NodeEnvs.Dev.valueOf()) {
   app.use(morgan('dev'));
@@ -54,4 +70,18 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-export default app;
+io.on('connection', (socket) => {
+  logger.info(`Client connected: ${socket.id}`);
+
+  socket.on('joinParty', (sessionId: string) => {
+    socket.join(sessionId);
+    logger.info(`Client ${socket.id} joined party room ${sessionId}`);
+  });
+
+  socket.on('disconnect', () => {
+    logger.info(`Client disconnected: 
+      ${socket.id}`);
+  });
+});
+
+export { httpServer as default, io };
