@@ -24,13 +24,14 @@ const Input = styled.input`
 
 const Button = styled.button`
   padding: 0.75rem;
-  background: #8b5cf6;
-  color: white;
+  background: ${props => props.disabled ? '#ad9dbf' : '#8b5cf6'};
+  color: white; 
   border: none;
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
+  opacity: ${props => props.disabled ? 0.9 : 1};
 
   &:hover {
     background: #7c3aed;
@@ -75,7 +76,7 @@ export const JoinForm: React.FC<Props> = ({ onSubmit, sessionId }) => {
         max={10}
         required
       />
-      <Button disabled={!!sessionId} type="submit">Join Waitlist</Button>
+      <Button disabled={!!sessionId || !name || !size} type="submit">Join Waitlist</Button>
     </Form>
   );
 };

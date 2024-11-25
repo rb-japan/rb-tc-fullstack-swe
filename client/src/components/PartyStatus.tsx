@@ -48,6 +48,10 @@ interface Props {
 
 export const PartyStatus: React.FC<Props> = ({ party, onCheckIn, onComplete }) => {
   const getStatusMessage = () => {
+    if (party.message) {
+        return party.message;
+      }
+
     switch (party.status) {
       case 'waiting': return 'Waiting for your turn...';
       case 'ready': return 'Your table is ready!';

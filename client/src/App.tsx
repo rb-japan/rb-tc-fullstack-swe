@@ -37,7 +37,6 @@ const Title = styled.h1`
 `;
 
 function App() {
-  const [error, setError] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(
     localStorage.getItem('sessionId')
   );
@@ -50,8 +49,8 @@ function App() {
       localStorage.setItem('sessionId', response.sessionId);
       setSessionId(response.sessionId);
       setInitialParty(response.party);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join waitlist');
+    } catch (error) {
+      console.error('Failed to join the waitlist:', error);
     }
   };
 

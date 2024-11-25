@@ -8,4 +8,5 @@ export interface Party {
   serviceEndTime?: Date;
   createdAt: Date;
   __v?: number;
+  message?: string;
 }

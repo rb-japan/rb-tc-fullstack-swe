@@ -40,7 +40,11 @@ export class PartyController {
         party.status = 'ready';
         await party.save();
 
-        io.to(party.sessionId).emit('statusUpdate', { party });
+        this.startCountdown(party);
+        io.to(party.sessionId).emit('statusUpdate', {  party: {
+          ...party.toObject(),
+          message: 'Your table is ready! Please check in within 15 seconds.',
+        } });
         logger.info(`Party ${party.sessionId} moved from waiting to ready`);
         break;
       }
@@ -62,6 +66,32 @@ export class PartyController {
     } catch (error) {
       logger.err(`Error processing service: ${error}`);
     }
+  };
+
+  private startCountdown = (party: IParty): void => {
+    setTimeout(async () => {
+      try {
+        const currentParty = await Party.findOne({ sessionId: party.sessionId });
+        
+        if (currentParty && currentParty.status === 'ready') {
+          logger.info(`Party ${party.sessionId} did not check in within 15 seconds - removing from system`);
+          
+          await Party.deleteOne({ sessionId: party.sessionId });
+          
+          io.to(party.sessionId).emit('statusUpdate', { 
+            party: {
+              ...currentParty.toObject(),
+              status: 'completed',
+              message: 'Removed due to inactivity',
+            },
+          });
+
+          await this.processQueue();
+        }
+      } catch (error) {
+        logger.err(`Error processing ready timeout: ${error}`);
+      }
+    }, RestaurantConstants.READY_TIMEOUT_MS);
   };
 
   public join: RequestHandler = async (req: Request, res: Response) => {
@@ -101,16 +131,21 @@ export class PartyController {
 
       await party.save();
 
+      if (initialStatus === 'ready') {
+        this.startCountdown(party);
+      }
+
       logger.info(`New party joined - status: ${initialStatus}, sessionId: ${sessionId}, size: ${size}, availableSeats: ${availableSeats}, waitingPartiesCount: ${waitingParties.length}`);
 
       res.status(HttpStatusCodes.CREATED).json({
-        party,
+        party: {
+          ...party.toObject(),
+          message: initialStatus === 'ready'
+            ? 'Table is ready! Please check in.'
+            : `Added to waitlist (Position: ${waitingParties.length + 1}). We will notify you when your table is ready.`,
+        },
         sessionId,
-        message: initialStatus === 'ready'
-          ? 'Table is ready! Please check in.'
-          : `Added to waitlist (Position: ${waitingParties.length + 1}). We will notify you when your table is ready.`,
       });
-      
     } catch (error) {
       throw new RouteError(
         HttpStatusCodes.INTERNAL_SERVER_ERROR,
