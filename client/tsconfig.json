@@ -5,12 +5,14 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
+    "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true
+    "strict": true,
+    "types": ["jest", "@testing-library/jest-dom"],
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
