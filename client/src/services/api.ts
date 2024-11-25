@@ -25,10 +25,28 @@ export const joinWaitlist = async (name: string, size: number): Promise<JoinResp
   return response.json();
 };
 
-export const checkIn = async (sessionId: string): Promise<void> => {
-  await fetch(`${API_BASE_URL}/checkin`, {
+export const checkIn = async (sessionId: string): Promise<JoinResponse> => {
+  const response = await fetch(`${API_BASE_URL}/checkin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId })
   });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to check in');
+  }
+
+  return response.json();
+}
+
+export const getStatus = async (sessionId: string): Promise<JoinResponse> => {
+  const response = await fetch(`http://localhost:5000/api/waitlist/status/${sessionId}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to get status');
+  }
+
+  return response.json();
 }

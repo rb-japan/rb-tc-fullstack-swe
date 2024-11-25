@@ -178,8 +178,10 @@ export class PartyController {
       logger.info(`Party ${sessionId} checked in and started service`);
 
       res.json({
-        party,
-        message: `Service started. Estimated time: ${party.size * 3} seconds`,
+        party: {
+          ...party.toObject(),
+          message: `Service started. Estimated time: ${party.size * 3} seconds`,
+        },
       });
 
     } catch (error) {

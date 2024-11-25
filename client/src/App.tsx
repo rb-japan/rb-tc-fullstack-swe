@@ -57,7 +57,8 @@ function App() {
   const handleCheckIn = async () => {
     if (!sessionId) return;
     try {
-      await checkIn(sessionId);
+      const response = await checkIn(sessionId);
+      setInitialParty(response.party);
     } catch (error) {
       console.error('Failed to check in:', error);
     }

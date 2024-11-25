@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Party } from '../types/types';
 import { socket } from '../socket/socket';
+import { getStatus } from '../services/api';
 
 export const usePartyStatus = (sessionId: string | null, initialParty: Party | null) => {
   const [party, setParty] = useState<Party | null>(initialParty ?? null);
@@ -16,11 +17,8 @@ export const usePartyStatus = (sessionId: string | null, initialParty: Party | n
       if (!sessionId) return;
       
       try {
-        const response = await fetch(`http://localhost:5000/api/waitlist/status/${sessionId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setParty(data.party);
-        }
+        const response = await getStatus(sessionId);
+        setParty(response.party);
       } catch (error) {
         console.error('Failed to fetch party status:', error);
       }
